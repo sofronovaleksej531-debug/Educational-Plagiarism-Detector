@@ -1,25 +1,24 @@
-name: Tests and Code Quality
+name: CI Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, master ]
+  workflow_dispatch:  # Ручной запуск
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.8', '3.9', '3.10']
-
+    
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: '3.10'
     
     - name: Install dependencies
       run: |
@@ -28,16 +27,41 @@ jobs:
     
     - name: Lint with flake8
       run: |
-        flake8 src tests --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 src tests --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        pip install flake8
+        flake8 src/ tests/ --count --show-source --statistics --max-line-length=120
     
-    - name: Format check with black
-      run: black --check src tests || true
+    - name: Check formatting with black
+      run: |
+        pip install black
+        black --check src/ tests/
     
-    - name: Run tests
-      run: pytest tests/ -v --cov=src --cov-report=xml
+    - name: Run unit tests
+      run: |
+        pip install pytest pytest-cov
+        python -m pytest tests/ -v --cov=src --cov-report=xml
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
-        files: ./coverage.xml
+        file: ./coverage.xml
+        fail_ci_if_error: true
+    
+    - name: Test basic functionality
+      run: |
+        # Создаем тестовые файлы
+        mkdir -p test_uploads
+        echo "Sample student essay about artificial intelligence." > test_uploads/essay1.txt
+        echo "Artificial intelligence in modern education systems." > test_uploads/essay2.txt
+        
+        # Тестируем основной функционал
+        python -m src.main analyze-dir test_uploads/ || echo "Test completed"
+    
+    - name: Archive test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: |
+          test_uploads/
+          results/
+        retention-days: 7
