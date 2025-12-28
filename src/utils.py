@@ -4,22 +4,44 @@
 
 import re
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import nltk
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
+import sys
 
-# Скачиваем ресурсы NLTK при первом импорте
+# Проверяем и импортируем scikit-learn
 try:
-    nltk.data.find('tokenizers/punkt')
-    nltk.data.find('corpora/stopwords')
-    nltk.data.find('corpora/wordnet')
-except LookupError:
-    nltk.download('punkt')
-    nltk.download('stopwords')
-    nltk.download('wordnet')
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+    print("Внимание: scikit-learn не установлен. Установите: pip install scikit-learn")
+
+# Проверяем и импортируем NLTK
+try:
+    import nltk
+    from nltk.tokenize import word_tokenize
+    from nltk.corpus import stopwords
+    from nltk.stem import WordNetLemmatizer
+    
+    # Скачиваем необходимые ресурсы NLTK
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        nltk.download('punkt', quiet=True)
+    
+    try:
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        nltk.download('stopwords', quiet=True)
+    
+    try:
+        nltk.data.find('corpora/wordnet')
+    except LookupError:
+        nltk.download('wordnet', quiet=True)
+    
+    NLTK_AVAILABLE = True
+except ImportError:
+    NLTK_AVAILABLE = False
+    print("Внимание: NLTK не установлен. Установите: pip install nltk")
 
 
 def preprocess_text(text: str, language: str = 'english') -> str:
@@ -28,11 +50,14 @@ def preprocess_text(text: str, language: str = 'english') -> str:
     
     Args:
         text: Исходный текст
-        language: Язык текста ('english' или 'russian')
+        language: Язык текста
         
     Returns:
         Обработанный текст
     """
+    if not text:
+        return ""
+    
     # Приведение к нижнему регистру
     text = text.lower()
     
@@ -56,18 +81,34 @@ def tokenize_and_lemmatize(text: str, language: str = 'english') -> list:
     Returns:
         Список лемматизированных токенов
     """
-    # Токенизация
-    tokens = word_tokenize(text, language=language)
+    if not text:
+        return []
     
-    # Удаление стоп-слов
-    stop_words = set(stopwords.words(language))
-    tokens = [token for token in tokens if token not in stop_words]
+    if not NLTK_AVAILABLE:
+        print("Ошибка: NLTK не доступен для токенизации")
+        return text.split()
     
-    # Лемматизация
-    lemmatizer = WordNetLemmatizer()
-    tokens = [lemmatizer.lemmatize(token) for token in tokens]
-    
-    return tokens
+    try:
+        # Токенизация
+        tokens = word_tokenize(text, language=language)
+        
+        # Удаление стоп-слов
+        try:
+            stop_words = set(stopwords.words(language))
+        except:
+            # Если нет стоп-слов для языка, используем английские
+            stop_words = set(stopwords.words('english'))
+        
+        tokens = [token for token in tokens if token not in stop_words]
+        
+        # Лемматизация
+        lemmatizer = WordNetLemmatizer()
+        tokens = [lemmatizer.lemmatize(token) for token in tokens]
+        
+        return tokens
+    except Exception as e:
+        print(f"Ошибка при обработке текста: {e}")
+        return text.split()
 
 
 def calculate_cosine_similarity(texts: list) -> np.ndarray:
@@ -80,6 +121,11 @@ def calculate_cosine_similarity(texts: list) -> np.ndarray:
     Returns:
         Матрица схожести N x N
     """
+    if not SKLEARN_AVAILABLE:
+        print("Ошибка: scikit-learn не доступен для вычисления косинусной схожести")
+        n = len(texts)
+        return np.identity(n)  # Возвращаем единичную матрицу
+    
     # Создание TF-IDF векторов
     vectorizer = TfidfVectorizer()
     tfidf_matrix = vectorizer.fit_transform(texts)
@@ -101,6 +147,9 @@ def calculate_lcs_similarity(text1: str, text2: str) -> float:
     Returns:
         Коэффициент схожести от 0 до 1
     """
+    if not text1 or not text2:
+        return 0.0
+    
     # Токенизация
     tokens1 = text1.split()
     tokens2 = text2.split()
@@ -135,9 +184,16 @@ def calculate_ngram_similarity(text1: str, text2: str, n: int = 3) -> float:
     Returns:
         Коэффициент Жаккара для n-грамм
     """
+    if not text1 or not text2:
+        return 0.0
+    
     # Генерация n-грамм
     def get_ngrams(text: str, n: int) -> set:
         tokens = text.split()
+        if len(tokens) < n:
+            # Если текст короче n, возвращаем весь текст как одну n-грамму
+            return {' '.join(tokens)}
+        
         ngrams = set()
         for i in range(len(tokens) - n + 1):
             ngram = ' '.join(tokens[i:i + n])
@@ -164,16 +220,21 @@ def read_text_file(filepath: str) -> str:
     Returns:
         Содержимое файла как строка
     """
-    encodings = ['utf-8', 'cp1251', 'latin-1']
+    encodings = ['utf-8', 'cp1251', 'latin-1', 'iso-8859-1', 'windows-1252']
     
     for encoding in encodings:
         try:
             with open(filepath, 'r', encoding=encoding) as f:
                 return f.read()
-        except UnicodeDecodeError:
+        except (UnicodeDecodeError, FileNotFoundError):
             continue
     
-    raise ValueError(f"Cannot read file {filepath} with any encoding")
+    # Последняя попытка с игнорированием ошибок
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            return f.read()
+    except Exception as e:
+        raise ValueError(f"Cannot read file {filepath}: {str(e)}")
 
 
 def extract_text_from_pdf(filepath: str) -> str:
@@ -188,25 +249,26 @@ def extract_text_from_pdf(filepath: str) -> str:
     """
     text = ""
     
-    # Попробуем PyPDF2
+    # Пробуем pdfplumber (лучше работает с русским текстом)
     try:
-        import PyPDF2
-        with open(filepath, 'rb') as f:
-            pdf_reader = PyPDF2.PdfReader(f)
-            for page in pdf_reader.pages:
-                text += page.extract_text() + "\n"
+        import pdfplumber
+        with pdfplumber.open(filepath) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
     except ImportError:
-        pass
-    
-    # Если PyPDF2 не сработал или не установлен, пробуем pdfplumber
-    if not text.strip():
+        # Пробуем PyPDF2
         try:
-            import pdfplumber
-            with pdfplumber.open(filepath) as pdf:
-                for page in pdf.pages:
-                    text += page.extract_text() + "\n"
+            import PyPDF2
+            with open(filepath, 'rb') as f:
+                pdf_reader = PyPDF2.PdfReader(f)
+                for page in pdf_reader.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + "\n"
         except ImportError:
-            raise ImportError("Install PyPDF2 or pdfplumber to read PDF files")
+            raise ImportError("Для чтения PDF установите pdfplumber или PyPDF2: pip install pdfplumber")
     
     return text
 
@@ -221,6 +283,9 @@ def create_similarity_matrix(texts: list) -> dict:
     Returns:
         Словарь с матрицами схожести для каждого метода
     """
+    if not texts:
+        return {}
+    
     n = len(texts)
     
     # Косинусная схожесть
