@@ -6,7 +6,6 @@ import os
 import json
 import argparse
 import datetime
-from typing import List, Dict, Any
 import glob
 
 from .utils import (
@@ -18,7 +17,7 @@ from .utils import (
 )
 
 
-def detect_plagiarism_in_directory(directory: str) -> Dict[str, Any]:
+def detect_plagiarism_in_directory(directory: str) -> dict:
     """
     Обнаружение плагиата во всех файлах указанной директории.
     
@@ -149,7 +148,7 @@ def detect_plagiarism_in_directory(directory: str) -> Dict[str, Any]:
     return result
 
 
-def analyze_single_pair(file1: str, file2: str) -> Dict[str, Any]:
+def analyze_single_pair(file1: str, file2: str) -> dict:
     """
     Анализ схожести между двумя файлами.
     
@@ -160,7 +159,7 @@ def analyze_single_pair(file1: str, file2: str) -> Dict[str, Any]:
     Returns:
         Словарь с результатами сравнения
     """
-    print(f"🔍 Сравнение файлов:")
+    print("🔍 Сравнение файлов:")
     print(f"   1. {os.path.basename(file1)}")
     print(f"   2. {os.path.basename(file2)}")
     
@@ -228,7 +227,7 @@ def analyze_single_pair(file1: str, file2: str) -> Dict[str, Any]:
         'interpretation': interpret_similarity(combined_sim)
     }
     
-    print(f"\n📊 РЕЗУЛЬТАТЫ:")
+    print("\n📊 РЕЗУЛЬТАТЫ:")
     print(f"   Cosine Similarity: {cosine_sim:.2%}")
     print(f"   LCS Similarity: {lcs_sim:.2%}")
     print(f"   N-gram Similarity: {ngram_sim:.2%}")
