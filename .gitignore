@@ -2,27 +2,113 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
 
 # Virtual environments
 venv/
 env/
 ENV/
+virtualenv/
+venv*/
+env*/
 
 # Environment variables
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-*
 
-# Data files (если большие)
+# PyCharm
+.idea/
+*.iml
+.idea/*
+
+# Data files
 data/*.csv
 data/*.xlsx
-!data/sample.csv
+!data/sample.csv  # Разрешаем только sample.csv
 
-# Generated files
+# ===== ДОБАВЛЕНО ДЛЯ ПРОЕКТА PLAGIARISM DETECTOR =====
+
+# Загруженные работы студентов (НЕ коммитим!)
+uploads/
+!uploads/.gitkeep  # Разрешаем пустой файл для сохранения структуры
+
+# Результаты анализа (НЕ коммитим!)
+results/
+!results/.gitkeep  # Разрешаем пустой файл для сохранения структуры
+
+# Кэш и временные файлы NLTK
+nltk_data/
+
+# Логи анализа
 *.log
+analysis_*.log
+plagiarism_*.log
+
+# Файлы результатов (генерируются автоматически)
+*.json
+*.png
+*.pdf
+!requirements.txt  # Но requirements.txt нужен
+
+# Временные файлы
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Системные файлы
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# Файлы операционной системы
+*.bak
+*.swp
+*~
+
+# Jupyter notebooks (если будут)
+.ipynb_checkpoints/
+
+# Тестовые покрытия
+.coverage
+htmlcov/
+.coverage.*
+.pytest_cache/
+
+# Распределения
+dist/
+build/
+*.egg-info/
+*.egg
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Тестовые артефакты
+test_reports/
+*.xml
+*.html
+
+# Документация (если генерируется автоматически)
+docs/_build/
+
+# Конфигурационные файлы IDE
+.project
+.pydevproject
+.settings/

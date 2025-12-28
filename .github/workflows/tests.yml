@@ -1,67 +1,186 @@
-name: CI Pipeline
-
+name: Check Detective Tasks
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:  # Ручной запуск
+    branches:
+      - code-review
+      - team-coding
+      - markdown
+      - mermaid
+      - llm
 
 jobs:
-  test:
+  check_detective:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    
-    - name: Lint with flake8
-      run: |
-        pip install flake8
-        flake8 src/ tests/ --count --show-source --statistics --max-line-length=120
-    
-    - name: Check formatting with black
-      run: |
-        pip install black
-        black --check src/ tests/
-    
-    - name: Run unit tests
-      run: |
-        pip install pytest pytest-cov
-        python -m pytest tests/ -v --cov=src --cov-report=xml
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: true
-    
-    - name: Test basic functionality
-      run: |
-        # Создаем тестовые файлы
-        mkdir -p test_uploads
-        echo "Sample student essay about artificial intelligence." > test_uploads/essay1.txt
-        echo "Artificial intelligence in modern education systems." > test_uploads/essay2.txt
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      - name: Run flake8 check
+        run: |
+          # Установка flake8 если нужно
+          pip install flake8
+          
+          # Запуск flake8 с игнорированием некоторых правил
+          flake8 . --count --max-complexity=10 --max-line-length=79 \
+            --statistics --exclude=.git,__pycache__,venv
+          
+          # Или более строгая проверка:
+          # flake8 . --ignore=E501,W503 --max-line-length=88
+
+          
         
-        # Тестируем основной функционал
-        python -m src.main analyze-dir test_uploads/ || echo "Test completed"
-    
-    - name: Archive test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results
-        path: |
-          test_uploads/
-          results/
-        retention-days: 7
+      - name: Calculate seeds
+        id: seeds
+        run: |
+          # Seed 1: From username
+          USERNAME_SEED=$(echo -n "${{ github.actor }}" | md5sum | head -c 1 | od -An -tx1 | tr -d ' ')
+          USERNAME_SEED=$((16#$USERNAME_SEED % 5 + 1))
+          
+          # Seed 2: From day of month
+          DAY_SEED=$(date +%d | sed 's/^0//')
+          DAY_SEED=$((DAY_SEED % 5 + 1))
+          
+          # Seed 3: From hour
+          HOUR_SEED=$(date +%H | sed 's/^0//')
+          HOUR_SEED=$((HOUR_SEED % 5 + 1))
+          
+          # Seed 4: From combination
+          COMBO_SEED=$(echo -n "${{ github.actor }}$(date +%d)$(date +%H)" | md5sum | tail -c 2 | od -An -td1 | tr -d ' ')
+          COMBO_SEED=$((COMBO_SEED % 5 + 1))
+          
+          # Seed 5: Random
+          PURE_SEED=$((RANDOM % 5 + 1))
+          
+          echo "USERNAME_SEED=$USERNAME_SEED" >> $GITHUB_OUTPUT
+          echo "DAY_SEED=$DAY_SEED" >> $GITHUB_OUTPUT
+          echo "HOUR_SEED=$HOUR_SEED" >> $GITHUB_OUTPUT
+          echo "COMBO_SEED=$COMBO_SEED" >> $GITHUB_OUTPUT
+          echo "PURE_SEED=$PURE_SEED" >> $GITHUB_OUTPUT
+      
+      - name: Map seeds to task values
+        id: tasks
+        run: |
+          # Task 1: Branch (uses USERNAME_SEED)
+          case ${{ steps.seeds.outputs.USERNAME_SEED }} in
+            1) BRANCH="code-review" ;;
+            2) BRANCH="team-coding" ;;
+            3) BRANCH="markdown" ;;
+            4) BRANCH="mermaid" ;;
+            5) BRANCH="llm" ;;
+          esac
+          echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
+          
+          # Task 2: File (uses DAY_SEED)
+          case ${{ steps.seeds.outputs.DAY_SEED }} in
+            1) FILE="qwen-advice.md" ;;
+            2) FILE="chatgpt-guide.txt" ;;
+            3) FILE="perplexity-tips.md" ;;
+            4) FILE="gigachat-notes.csv" ;;
+            5) FILE="copilot-wisdom.md" ;;
+          esac
+          echo "FILE=$FILE" >> $GITHUB_OUTPUT
+          
+          # Task 3: Phrase (uses HOUR_SEED)
+          case ${{ steps.seeds.outputs.HOUR_SEED }} in
+            1) PHRASE="С новым годом! Пусть каждый код блеснет красотой!" ;;
+            2) PHRASE="Успехов в изучении! Вайб-кодинг - это твой путь!" ;;
+            3) PHRASE="Новый год - новые возможности! Вперед к знаниям!" ;;
+            4) PHRASE="Поздравляю с началом нового периода! Развивайся смело!" ;;
+            5) PHRASE="Новый год встречаем с энтузиазмом! Учись, создавай, преуспевай!" ;;
+          esac
+          echo "PHRASE=$PHRASE" >> $GITHUB_OUTPUT
+          
+          # Task 4: Folder (uses COMBO_SEED)
+          case ${{ steps.seeds.outputs.COMBO_SEED }} in
+            1) FOLDER="andrej_karpathy" ;;
+            2) FOLDER="yan_lecun" ;;
+            3) FOLDER="sam_altman" ;;
+            4) FOLDER="ian_goodfellow" ;;
+            5) FOLDER="geoffrey_everest_hinton" ;;
+          esac
+          echo "FOLDER=$FOLDER" >> $GITHUB_OUTPUT
+          
+          # Task 5: Artifact (uses PURE_SEED)
+          case ${{ steps.seeds.outputs.PURE_SEED }} in
+            1) ARTIFACT="qwen.png" ;;
+            2) ARTIFACT="claude.pdf" ;;
+            3) ARTIFACT="chatgpt.jpg" ;;
+            4) ARTIFACT="cursor.pptx" ;;
+            5) ARTIFACT="lovable.png" ;;
+          esac
+          echo "ARTIFACT=$ARTIFACT" >> $GITHUB_OUTPUT
+      
+      - name: "✅ Task 1: Check branch name"
+        run: |
+          CURRENT_BRANCH=${{ github.ref_name }}
+          EXPECTED_BRANCH=${{ steps.tasks.outputs.BRANCH }}
+          
+          if [ "$CURRENT_BRANCH" = "$EXPECTED_BRANCH" ]; then
+            echo "✅ Ветка правильная"
+          else
+            echo "❌ Ветка неверная (как же тебя зовут)"
+            exit 1
+          fi
+      
+      - name: "✅ Task 2: Check file exists and format"
+        run: |
+          FILE=${{ steps.tasks.outputs.FILE }}
+          
+          if [ -f "$FILE" ]; then
+            echo "✅ Файл найден"
+          else
+            echo "❌ Файл неверный (какой сегодня день)"
+            exit 1
+          fi
+      
+      - name: "✅ Task 3: Check positive phrase in file"
+        run: |
+          FILE=${{ steps.tasks.outputs.FILE }}
+          PHRASE="${{ steps.tasks.outputs.PHRASE }}"
+          
+          if grep -q "$PHRASE" "$FILE"; then
+            echo "✅ Надпись правильная"
+          else
+            echo "❌ Надпись неверная (который час)"
+            exit 1
+          fi
+      
+      - name: "✅ Task 4: Check folder with person name"
+        run: |
+          FOLDER=${{ steps.tasks.outputs.FOLDER }}
+          
+          if [ -d "$FOLDER" ]; then
+            echo "✅ Папка найдена"
+          else
+            echo "❌ Папка неверная (разное)"
+            exit 1
+          fi
+      
+      - name: "✅ Task 5: Check artifact file in folder"
+        run: |
+          FOLDER=${{ steps.tasks.outputs.FOLDER }}
+          ARTIFACT=${{ steps.tasks.outputs.ARTIFACT }}
+          FULL_PATH="$FOLDER/$ARTIFACT"
+          
+          if [ -f "$FULL_PATH" ]; then
+            echo "✅ Артефакт найден"
+          else
+            echo "❌ Артефакт неверный (тут тупа рандом)"
+            exit 1
+          fi
+      
+      - name: 🎉 ALL TASKS COMPLETED!
+        if: success()
+        run: |
+          echo "╔═══════════════════════════════════════════════════╗"
+          echo "║ 🎉 ВСЕ ЗАДАНИЯ ВЫПОЛНЕНЫ!                         ║"
+          echo "╚═══════════════════════════════════════════════════╝"
+      
+      - name: ❌ TASKS FAILED
+        if: failure()
+        run: |
+          echo "╔════════════════════════════════════════╗"
+          echo "║       ❌ ЗАДАНИЕ НЕ ПРОЙДЕНО ❌        ║"
+          echo "╚════════════════════════════════════════╝"

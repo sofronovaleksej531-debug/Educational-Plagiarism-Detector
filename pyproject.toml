@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "educational-plagiarism-detector"
+version = "1.0.0"
+authors = [{name = "Your Name", email = "your.email@example.com"}]
+description = "System for detecting plagiarism in student works"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.21.0",
+    "scikit-learn>=1.0.0",
+    "nltk>=3.6.0",
+    "pandas>=1.5.0",
+    "matplotlib>=3.5.0",
+    "PyPDF2>=2.0.0",
+    "pdfplumber>=0.7.0"
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0.0", "pytest-cov>=3.0.0", "flake8>=5.0.0", "black>=22.0.0"]
+
+[tool.black]
+line-length = 120
+target-version = ['py38', 'py39', 'py310']
